@@ -1,0 +1,27 @@
+{
+  "name": "paperwhisperer-frontend",
+  "version": "1.0.0",
+  "description": "PaperWhisperer 前端界面",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.4",
+    "pinia": "^2.1.6",
+    "axios": "^1.5.0",
+    "marked": "^9.1.0",
+    "highlight.js": "^11.9.0",
+    "daisyui": "^3.9.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.3.4",
+    "vite": "^4.4.9",
+    "tailwindcss": "^3.3.3",
+    "autoprefixer": "^10.4.15",
+    "postcss": "^8.4.29"
+  }
+}
+
