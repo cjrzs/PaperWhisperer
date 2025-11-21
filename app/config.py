@@ -60,6 +60,8 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        # 环境变量优先级高于 .env 文件（pydantic 默认行为）
+        # 即使 .env 文件存在，环境变量的值也会覆盖 .env 中的值
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

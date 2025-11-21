@@ -8,15 +8,30 @@ echo "======================================"
 echo "  PaperWhisperer 启动脚本"
 echo "======================================"
 
-# 检查 .env 文件
-if [ ! -f .env ]; then
-    echo "错误: 未找到 .env 文件"
-    echo "请复制 .env.example 为 .env 并填写配置"
-    echo "  cp .env.example .env"
+# 检查配置（优先使用环境变量，其次是 .env 文件）
+if [ -f .env ]; then
+    echo "✓ 找到配置文件 .env"
+elif [ -n "$QWEN_API_KEY" ] || [ -n "$OPENAI_API_KEY" ] || [ -n "$DEEPSEEK_API_KEY" ]; then
+    echo "✓ 检测到环境变量中的 API Key"
+else
+    echo "错误: 未找到配置"
+    echo ""
+    echo "请选择以下任一配置方式："
+    echo "  1. 使用环境变量（推荐）："
+    echo "     export QWEN_API_KEY=your-key"
+    echo "     export MINERU_TOKEN=your-token"
+    echo ""
+    echo "  2. 创建 .env 文件："
+    echo "     cp .env.example .env"
+    echo "     然后编辑 .env 文件填写配置"
+    echo ""
     exit 1
 fi
 
-echo "✓ 找到配置文件 .env"
+# 检查必需的配置
+if [ -z "$MINERU_TOKEN" ]; then
+    echo "警告: 未配置 MINERU_TOKEN，PDF 解析功能将不可用"
+fi
 
 # 检查 Docker
 if ! command -v docker &> /dev/null; then
