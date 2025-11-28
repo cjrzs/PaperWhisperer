@@ -14,6 +14,13 @@ from app.config import settings
 from app.utils.logger import log
 
 
+def _json_serializer(obj):
+    """自定义 JSON encoder，处理 datetime 等特殊类型"""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+
 class FileManager:
     """文件管理器"""
     
@@ -70,7 +77,7 @@ class FileManager:
         
         try:
             async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
-                await f.write(json.dumps(content, ensure_ascii=False, indent=2))
+                await f.write(json.dumps(content, ensure_ascii=False, indent=2, default=_json_serializer))
             
             log.info(f"解析内容保存成功: {paper_id}")
             return file_path
@@ -112,7 +119,7 @@ class FileManager:
         
         try:
             async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
-                await f.write(json.dumps(translation, ensure_ascii=False, indent=2))
+                await f.write(json.dumps(translation, ensure_ascii=False, indent=2, default=_json_serializer))
             
             log.info(f"翻译结果保存成功: {paper_id}")
             return file_path
@@ -145,7 +152,7 @@ class FileManager:
         
         try:
             async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
-                await f.write(json.dumps(summary, ensure_ascii=False, indent=2))
+                await f.write(json.dumps(summary, ensure_ascii=False, indent=2, default=_json_serializer))
             
             log.info(f"摘要保存成功: {paper_id}")
             return file_path

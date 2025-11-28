@@ -55,25 +55,51 @@ cd PaperWhisperer
 
 ### 2. 配置环境变量
 
+**方式一：使用环境变量（推荐用于生产环境）**
+
+在你的 shell 配置文件（`~/.zshrc` 或 `~/.bashrc`）中添加：
+
 ```bash
-cp .env.example .env
+# 必需配置
+export QWEN_API_KEY="sk-your-qwen-api-key"
+export MINERU_TOKEN="your-mineru-token"
+
+# 可选配置
+export DEFAULT_LLM_PROVIDER="qwen"
+export DEFAULT_EMBEDDING_PROVIDER="qwen"
+```
+
+然后重新加载配置：
+
+```bash
+source ~/.zshrc  # 或 source ~/.bashrc
+```
+
+**方式二：使用 .env 文件（推荐用于本地开发）**
+
+复制环境变量配置模板：
+
+```bash
+cp env.example.txt .env
 ```
 
 编辑 `.env` 文件，填入你的 API Keys：
 
 ```env
-# LLM API Keys
-QWEN_API_KEY=your_qwen_api_key
-OPENAI_API_KEY=your_openai_api_key  # 可选
-DEEPSEEK_API_KEY=your_deepseek_api_key  # 可选
+# LLM API Keys（至少配置一个）
+QWEN_API_KEY=sk-your-qwen-api-key
+# OPENAI_API_KEY=sk-your-openai-api-key  # 可选
+# DEEPSEEK_API_KEY=sk-your-deepseek-api-key  # 可选
 
-# MinerU
-MINERU_TOKEN=your_mineru_token
+# MinerU（必需）
+MINERU_TOKEN=your-mineru-token
 
-# 默认设置
-DEFAULT_LLM_PROVIDER=qwen
-DEFAULT_EMBEDDING_PROVIDER=qwen
+# 默认设置（可选，已有默认值）
+# DEFAULT_LLM_PROVIDER=qwen
+# DEFAULT_EMBEDDING_PROVIDER=qwen
 ```
+
+**完整的环境变量列表请查看 [CONFIGURATION.md](CONFIGURATION.md) 或 [env.example.txt](env.example.txt)**
 
 ### 3. 启动服务
 

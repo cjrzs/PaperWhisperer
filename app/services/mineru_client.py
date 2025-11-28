@@ -4,6 +4,8 @@ MinerU API 客户端
 """
 import asyncio
 import httpx
+import zipfile
+import tempfile
 from typing import Optional, Dict, Any
 from pathlib import Path
 
@@ -53,9 +55,11 @@ class MinerUClient:
                         "url": url,
                         "model_version": "vlm"
                     }
+                    log.info(f"提交 MinerU 任务: endpoint={endpoint}, data={data}")
                     response = await client.post(endpoint, headers=self.headers, json=data)
                 else:
                     # 使用文件上传
+                    log.info(f"提交 MinerU 任务（文件上传）: endpoint={endpoint}, file={file_path.name}")
                     with open(file_path, 'rb') as f:
                         files = {'file': (file_path.name, f, 'application/pdf')}
                         # 文件上传需要不同的 header
@@ -70,15 +74,34 @@ class MinerUClient:
                 response.raise_for_status()
                 result = response.json()
                 
-                if result.get("code") != 200:
-                    raise Exception(f"MinerU API 错误: {result.get('message')}")
+                log.info(f"MinerU API 响应: status={response.status_code}, code={result.get('code')}")
                 
-                task_id = result.get("data")
+                # 检查响应格式
+                if not isinstance(result, dict):
+                    raise Exception(f"MinerU API 返回格式错误，期望 dict，实际为 {type(result)}")
+                
+                # MinerU API 约定：code=0 表示成功，code!=0 表示失败
+                if result.get("code") != 0:
+                    error_msg = result.get('message') or result.get('msg') or '未知错误'
+                    log.error(f"MinerU API 返回错误: code={result.get('code')}, message={error_msg}, full_response={result}")
+                    raise Exception(f"MinerU API 错误: {error_msg}")
+                
+                # 从响应中提取 task_id
+                data = result.get("data", {})
+                if isinstance(data, dict):
+                    task_id = data.get("task_id")
+                else:
+                    # 如果 data 直接是字符串（旧版 API）
+                    task_id = data
+                
+                if not task_id:
+                    raise Exception(f"MinerU API 未返回 task_id, 完整响应: {result}")
+                
                 log.info(f"MinerU 任务提交成功: task_id={task_id}")
                 return task_id
                 
         except httpx.HTTPError as e:
-            log.error(f"提交 MinerU 任务失败: {e}")
+            log.error(f"提交 MinerU 任务失败（HTTP 错误）: {e}")
             raise
         except Exception as e:
             log.error(f"提交 MinerU 任务异常: {e}")
@@ -103,16 +126,34 @@ class MinerUClient:
                 response.raise_for_status()
                 result = response.json()
                 
-                if result.get("code") != 200:
-                    raise Exception(f"MinerU API 错误: {result.get('message')}")
+                # MinerU API 约定：code=0 表示成功
+                if result.get("code") != 0:
+                    raise Exception(f"MinerU API 错误: {result.get('message') or result.get('msg')}")
                 
                 data = result.get("data", {})
-                return {
-                    "status": data.get("status"),  # pending, processing, completed, failed
-                    "progress": data.get("progress", 0),
-                    "result_url": data.get("result_url"),
-                    "error": data.get("error")
+                
+                # MinerU API 实际返回的字段名与预期不同
+                # state: pending, done, failed
+                # full_zip_url: 结果下载链接
+                state = data.get("state")
+                
+                # 将 MinerU 的状态映射到标准状态
+                status_map = {
+                    "pending": "pending",
+                    "processing": "processing",
+                    "done": "completed",
+                    "failed": "failed"
                 }
+                
+                status_info = {
+                    "status": status_map.get(state, state),
+                    "progress": data.get("progress", 0),
+                    "result_url": data.get("full_zip_url"),  # MinerU 使用 full_zip_url
+                    "error": data.get("err_msg")  # MinerU 使用 err_msg
+                }
+                
+                log.info(f"任务 {task_id} 状态: {state} -> {status_info['status']}")
+                return status_info
                 
         except httpx.HTTPError as e:
             log.error(f"查询 MinerU 任务状态失败: {e}")
@@ -162,39 +203,68 @@ class MinerUClient:
     @async_retry(max_retries=3, delay=2.0)
     async def _download_result(self, result_url: str) -> Dict[str, Any]:
         """
-        下载解析结果
+        下载解析结果（zip文件）并解压提取markdown
         
         Args:
-            result_url: 结果 URL
+            result_url: 结果 URL（zip文件）
             
         Returns:
             解析结果（Markdown 等）
         """
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            # 下载 zip 文件
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                log.info(f"开始下载 MinerU 结果: {result_url}")
                 response = await client.get(result_url)
                 response.raise_for_status()
                 
-                # 根据内容类型处理
-                content_type = response.headers.get("content-type", "")
+                # 创建临时文件保存 zip
+                with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as tmp_zip:
+                    tmp_zip.write(response.content)
+                    tmp_zip_path = tmp_zip.name
                 
-                if "application/json" in content_type:
-                    return response.json()
-                elif "text/markdown" in content_type or "text/plain" in content_type:
-                    return {
-                        "content": response.text,
-                        "format": "markdown"
-                    }
-                else:
-                    # 尝试作为文本处理
-                    return {
-                        "content": response.text,
-                        "format": "text"
-                    }
+                log.info(f"zip 文件已下载到: {tmp_zip_path}")
+                
+                # 创建临时目录用于解压
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    # 解压 zip 文件
+                    with zipfile.ZipFile(tmp_zip_path, 'r') as zip_ref:
+                        zip_ref.extractall(tmp_dir)
+                        log.info(f"zip 文件已解压到: {tmp_dir}")
+                        
+                        # 列出解压后的文件
+                        extracted_files = list(Path(tmp_dir).rglob('*'))
+                        log.info(f"解压后的文件列表: {[str(f) for f in extracted_files]}")
+                        
+                        # 查找 .md 文件
+                        md_files = list(Path(tmp_dir).rglob('*.md'))
+                        
+                        if not md_files:
+                            raise Exception(f"在解压结果中未找到 .md 文件")
+                        
+                        # 如果有多个 .md 文件，选择最大的一个（通常是主文档）
+                        md_file = max(md_files, key=lambda f: f.stat().st_size)
+                        log.info(f"找到 markdown 文件: {md_file.name}")
+                        
+                        # 读取 markdown 内容
+                        with open(md_file, 'r', encoding='utf-8') as f:
+                            markdown_content = f.read()
+                        
+                        # 清理临时 zip 文件
+                        Path(tmp_zip_path).unlink()
+                        
+                        return {
+                            "content": markdown_content,
+                            "format": "markdown",
+                            "filename": md_file.name
+                        }
                     
         except httpx.HTTPError as e:
             log.error(f"下载 MinerU 结果失败: {e}")
             raise
+        except zipfile.BadZipFile as e:
+            log.error(f"zip 文件解压失败: {e}")
+            raise Exception(f"下载的文件不是有效的 zip 文件")
         except Exception as e:
             log.error(f"下载 MinerU 结果异常: {e}")
             raise

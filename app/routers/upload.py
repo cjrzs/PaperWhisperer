@@ -63,7 +63,7 @@ async def process_paper_background(task_id: str, file_id: str, file_path, is_url
         task_status[task_id]["progress"] = 100
         task_status[task_id]["status"] = TaskStatus.COMPLETED
         task_status[task_id]["paper_id"] = file_id
-        task_status[task_id]["metadata"] = paper_structure.metadata
+        task_status[task_id]["metadata"] = paper_structure.metadata.dict()
         
         log.info(f"论文处理完成: task_id={task_id}, paper_id={file_id}")
         

@@ -4,7 +4,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
 const client = axios.create({
   baseURL: API_BASE,
-  timeout: 60000,
+  timeout: 600000, // 10 分钟超时（MinerU 解析可能需要较长时间）
   headers: {
     'Content-Type': 'application/json'
   }

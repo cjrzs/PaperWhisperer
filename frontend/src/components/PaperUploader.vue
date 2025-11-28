@@ -146,7 +146,7 @@ async function uploadFile(file) {
 }
 
 async function pollStatus(taskId) {
-  const maxAttempts = 60 // 最多轮询 5 分钟
+  const maxAttempts = 200 // 最多轮询约 10 分钟（200 * 3秒）
   let attempts = 0
   
   statusMessage.value = '正在解析论文...'

@@ -1,10 +1,21 @@
 """
 FastAPI 主应用入口
 """
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+
+# 尝试加载 .env 文件（如果存在）
+from dotenv import load_dotenv
+env_file = Path(__file__).parent.parent / ".env"
+if env_file.exists():
+    try:
+        load_dotenv(env_file)
+    except (PermissionError, OSError):
+        # .env 文件存在但不可读，忽略并使用环境变量
+        pass
 
 from app.config import settings
 from app.utils.logger import log

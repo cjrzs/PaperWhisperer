@@ -1,67 +1,153 @@
 """
 配置管理模块
 支持从环境变量和 .env 文件加载配置
+所有配置项都从环境变量中读取
 """
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import Optional
 import os
 from pathlib import Path
 
 
 class Settings(BaseSettings):
-    """应用配置"""
+    """应用配置 - 所有配置都从环境变量中读取"""
     
     # LLM Provider Configuration
-    qwen_api_key: Optional[str] = None
-    qwen_api_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    openai_api_key: Optional[str] = None
-    openai_api_base: str = "https://api.openai.com/v1"
-    deepseek_api_key: Optional[str] = None
-    deepseek_api_base: str = "https://api.deepseek.com/v1"
+    qwen_api_key: Optional[str] = Field(default=None, description="通义千问 API Key")
+    qwen_api_base: str = Field(
+        default_factory=lambda: os.getenv("QWEN_API_BASE", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+        description="通义千问 API Base URL"
+    )
+    openai_api_key: Optional[str] = Field(default=None, description="OpenAI API Key")
+    openai_api_base: str = Field(
+        default_factory=lambda: os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"),
+        description="OpenAI API Base URL"
+    )
+    deepseek_api_key: Optional[str] = Field(default=None, description="DeepSeek API Key")
+    deepseek_api_base: str = Field(
+        default_factory=lambda: os.getenv("DEEPSEEK_API_BASE", "https://api.deepseek.com/v1"),
+        description="DeepSeek API Base URL"
+    )
     
     # MinerU Configuration
-    mineru_token: Optional[str] = None
-    mineru_api_base: str = "https://mineru.net/api/v4"
-    mineru_poll_interval: int = 3  # seconds
-    mineru_timeout: int = 600  # seconds
+    mineru_token: Optional[str] = Field(default=None, description="MinerU API Token")
+    mineru_api_base: str = Field(
+        default_factory=lambda: os.getenv("MINERU_API_BASE", "https://mineru.net/api/v4"),
+        description="MinerU API Base URL"
+    )
+    mineru_poll_interval: int = Field(
+        default_factory=lambda: int(os.getenv("MINERU_POLL_INTERVAL", "3")),
+        description="MinerU 轮询间隔（秒）"
+    )
+    mineru_timeout: int = Field(
+        default_factory=lambda: int(os.getenv("MINERU_TIMEOUT", "600")),
+        description="MinerU 超时时间（秒）"
+    )
     
     # Milvus Configuration
-    milvus_host: str = "milvus"
-    milvus_port: int = 19530
-    milvus_collection_name: str = "paper_chunks"
+    milvus_host: str = Field(
+        default_factory=lambda: os.getenv("MILVUS_HOST", "milvus"),
+        description="Milvus 主机地址"
+    )
+    milvus_port: int = Field(
+        default_factory=lambda: int(os.getenv("MILVUS_PORT", "19530")),
+        description="Milvus 端口"
+    )
+    milvus_collection_name: str = Field(
+        default_factory=lambda: os.getenv("MILVUS_COLLECTION_NAME", "paper_chunks"),
+        description="Milvus 集合名称"
+    )
     
     # Default Providers
-    default_llm_provider: str = "qwen"
-    default_llm_model: str = "qwen-max"
-    default_embedding_provider: str = "qwen"
-    default_embedding_model: str = "text-embedding-v3"
+    default_llm_provider: str = Field(
+        default_factory=lambda: os.getenv("DEFAULT_LLM_PROVIDER", "qwen"),
+        description="默认 LLM 提供商"
+    )
+    default_llm_model: str = Field(
+        default_factory=lambda: os.getenv("DEFAULT_LLM_MODEL", "qwen-max"),
+        description="默认 LLM 模型"
+    )
+    default_embedding_provider: str = Field(
+        default_factory=lambda: os.getenv("DEFAULT_EMBEDDING_PROVIDER", "qwen"),
+        description="默认 Embedding 提供商"
+    )
+    default_embedding_model: str = Field(
+        default_factory=lambda: os.getenv("DEFAULT_EMBEDDING_MODEL", "text-embedding-v3"),
+        description="默认 Embedding 模型"
+    )
     
     # Application Settings
-    backend_port: int = 8000
-    frontend_port: int = 80
-    max_upload_size: int = 50  # MB
-    chunk_size: int = 800  # tokens
-    chunk_overlap: int = 100  # tokens
-    top_k_retrieval: int = 5
+    backend_port: int = Field(
+        default_factory=lambda: int(os.getenv("BACKEND_PORT", "8000")),
+        description="后端服务端口"
+    )
+    frontend_port: int = Field(
+        default_factory=lambda: int(os.getenv("FRONTEND_PORT", "80")),
+        description="前端服务端口"
+    )
+    max_upload_size: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_UPLOAD_SIZE", "50")),
+        description="最大上传文件大小（MB）"
+    )
+    chunk_size: int = Field(
+        default_factory=lambda: int(os.getenv("CHUNK_SIZE", "800")),
+        description="文本分块大小（tokens）"
+    )
+    chunk_overlap: int = Field(
+        default_factory=lambda: int(os.getenv("CHUNK_OVERLAP", "100")),
+        description="文本分块重叠大小（tokens）"
+    )
+    top_k_retrieval: int = Field(
+        default_factory=lambda: int(os.getenv("TOP_K_RETRIEVAL", "5")),
+        description="检索返回的 Top K 结果数"
+    )
     
-    # Paths
-    base_dir: Path = Path(__file__).parent.parent
-    data_dir: Path = base_dir / "data"
-    upload_dir: Path = data_dir / "uploads"
-    parsed_dir: Path = data_dir / "parsed"
-    embeddings_dir: Path = data_dir / "embeddings"
-    summaries_dir: Path = data_dir / "summaries"
+    # Paths - 基于环境变量或使用默认路径
+    base_dir: Path = Field(
+        default_factory=lambda: Path(os.getenv("BASE_DIR", str(Path(__file__).parent.parent))),
+        description="项目根目录"
+    )
+    
+    @property
+    def data_dir(self) -> Path:
+        """数据目录"""
+        return Path(os.getenv("DATA_DIR", str(self.base_dir / "data")))
+    
+    @property
+    def upload_dir(self) -> Path:
+        """上传目录"""
+        return Path(os.getenv("UPLOAD_DIR", str(self.data_dir / "uploads")))
+    
+    @property
+    def parsed_dir(self) -> Path:
+        """解析结果目录"""
+        return Path(os.getenv("PARSED_DIR", str(self.data_dir / "parsed")))
+    
+    @property
+    def embeddings_dir(self) -> Path:
+        """向量嵌入目录"""
+        return Path(os.getenv("EMBEDDINGS_DIR", str(self.data_dir / "embeddings")))
+    
+    @property
+    def summaries_dir(self) -> Path:
+        """摘要目录"""
+        return Path(os.getenv("SUMMARIES_DIR", str(self.data_dir / "summaries")))
     
     # Debug
-    debug: bool = False
-    log_level: str = "INFO"
+    debug: bool = Field(
+        default_factory=lambda: os.getenv("DEBUG", "False").lower() in ("true", "1", "yes"),
+        description="调试模式"
+    )
+    log_level: str = Field(
+        default_factory=lambda: os.getenv("LOG_LEVEL", "INFO").upper(),
+        description="日志级别"
+    )
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        # 环境变量优先级高于 .env 文件（pydantic 默认行为）
-        # 即使 .env 文件存在，环境变量的值也会覆盖 .env 中的值
+    model_config = {
+        "case_sensitive": False,
+        "extra": "ignore",
+    }
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -125,5 +211,9 @@ class Settings(BaseSettings):
 
 
 # 全局配置实例
+# 所有配置都从环境变量中读取
+# 如果需要使用 .env 文件，请手动使用 python-dotenv 加载：
+#   from dotenv import load_dotenv
+#   load_dotenv()
 settings = Settings()
 
