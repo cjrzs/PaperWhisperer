@@ -26,7 +26,7 @@
           <div class="card bg-base-200">
             <div class="card-body">
               <h3 class="card-title text-lg">综合摘要</h3>
-              <p class="whitespace-pre-wrap">{{ paperStore.summary.overall_summary }}</p>
+              <MarkdownRenderer :content="paperStore.summary.overall_summary" />
             </div>
           </div>
 
@@ -34,11 +34,7 @@
           <div v-if="paperStore.summary.key_points && paperStore.summary.key_points.length > 0" class="card bg-base-200">
             <div class="card-body">
               <h3 class="card-title text-lg">关键要点</h3>
-              <ul class="list-disc list-inside space-y-2">
-                <li v-for="(point, index) in paperStore.summary.key_points" :key="index">
-                  {{ point }}
-                </li>
-              </ul>
+              <MarkdownRenderer :content="formatKeyPoints(paperStore.summary.key_points)" />
             </div>
           </div>
 
@@ -46,7 +42,7 @@
           <div v-if="paperStore.summary.methodology" class="card bg-base-200">
             <div class="card-body">
               <h3 class="card-title text-lg">研究方法</h3>
-              <p class="whitespace-pre-wrap">{{ paperStore.summary.methodology }}</p>
+              <MarkdownRenderer :content="paperStore.summary.methodology" />
             </div>
           </div>
 
@@ -54,7 +50,7 @@
           <div v-if="paperStore.summary.contributions" class="card bg-base-200">
             <div class="card-body">
               <h3 class="card-title text-lg">主要贡献</h3>
-              <p class="whitespace-pre-wrap">{{ paperStore.summary.contributions }}</p>
+              <MarkdownRenderer :content="paperStore.summary.contributions" />
             </div>
           </div>
 
@@ -69,7 +65,7 @@
                   class="border-l-4 border-primary pl-4"
                 >
                   <h4 class="font-bold mb-1">{{ section.section_title }}</h4>
-                  <p class="text-sm">{{ section.summary }}</p>
+                  <MarkdownRenderer :content="section.summary" class="text-sm" />
                 </div>
               </div>
             </div>
@@ -88,6 +84,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { usePaperStore } from '../stores/paper'
+import MarkdownRenderer from './MarkdownRenderer.vue'
 
 const props = defineProps({
   paperId: {
@@ -98,6 +95,12 @@ const props = defineProps({
 
 const paperStore = usePaperStore()
 const generating = ref(false)
+
+// 将关键要点数组格式化为 Markdown 列表
+function formatKeyPoints(points) {
+  if (!points || points.length === 0) return ''
+  return points.map(point => `- ${point}`).join('\n')
+}
 
 onMounted(async () => {
   await paperStore.loadSummary(props.paperId)

@@ -15,6 +15,16 @@
 
     <!-- Paper Content -->
     <div v-else-if="paperStore.hasPaper" class="space-y-4">
+      <!-- 返回按钮 -->
+      <div class="mb-4">
+        <button @click="router.push('/history')" class="btn btn-ghost btn-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          返回历史列表
+        </button>
+      </div>
+      
       <!-- Paper Header -->
       <div class="card bg-base-200 shadow-xl">
         <div class="card-body">
@@ -24,7 +34,7 @@
           </div>
           <div v-if="paperStore.paperMetadata.abstract" class="mt-4">
             <h3 class="font-bold mb-2">摘要</h3>
-            <p class="text-sm">{{ paperStore.paperMetadata.abstract }}</p>
+            <MarkdownRenderer :content="paperStore.paperMetadata.abstract" class="text-sm" />
           </div>
         </div>
       </div>
@@ -87,14 +97,16 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { usePaperStore } from '../stores/paper'
 import PaperStructure from '../components/PaperStructure.vue'
 import TranslationView from '../components/TranslationView.vue'
 import SummaryPanel from '../components/SummaryPanel.vue'
 import ChatWindow from '../components/ChatWindow.vue'
+import MarkdownRenderer from '../components/MarkdownRenderer.vue'
 
 const route = useRoute()
+const router = useRouter()
 const paperStore = usePaperStore()
 
 const paperId = ref(route.params.paperId)

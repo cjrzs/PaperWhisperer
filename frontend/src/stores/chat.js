@@ -22,13 +22,22 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function sendMessage(paperId, message, sessionId = null) {
-    const sid = sessionId || currentSessionId.value
+    let sid = sessionId || currentSessionId.value
+
+    // 如果没有 session_id，先创建一个
+    if (!sid) {
+      sid = await createSession(paperId)
+    }
+
+    // 确保 currentSessionId 已设置
+    currentSessionId.value = sid
 
     // 添加用户消息
     if (!sessions.value[sid]) {
       sessions.value[sid] = { paperId, messages: [] }
     }
 
+    // 添加用户消息 - 直接更新 sessions.value 以确保响应式
     sessions.value[sid].messages.push({
       role: 'user',
       content: message,
@@ -42,15 +51,26 @@ export const useChatStore = defineStore('chat', () => {
       stream: false
     })
 
+    // 调试：打印响应
+    console.log('收到响应:', response)
+
     // 添加助手回复
+    // 确保获取正确的内容字段
+    const content = response.message?.content || response.content || response.answer || '无响应'
+    console.log('提取的内容:', content)
+    
+    // 添加助手消息 - 直接更新 sessions.value 以确保响应式
     sessions.value[sid].messages.push({
       role: 'assistant',
-      content: response.message.content,
-      sources: response.sources,
+      content: typeof content === 'string' ? content : JSON.stringify(content),
+      sources: response.sources || [],
       timestamp: new Date()
     })
+    
+    console.log('当前消息列表:', sessions.value[sid].messages)
+    console.log('当前 sessionId:', sid)
+    console.log('currentSessionId:', currentSessionId.value)
 
-    currentSessionId.value = sid
     return response
   }
 

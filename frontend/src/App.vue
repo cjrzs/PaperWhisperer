@@ -17,6 +17,7 @@
             </label>
             <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52 text-base-content">
               <li><router-link to="/">首页</router-link></li>
+              <li><router-link to="/history">论文历史</router-link></li>
               <li><a href="/docs" target="_blank">API 文档</a></li>
               <li><a href="https://github.com/yourusername/paperwhisperer" target="_blank">GitHub</a></li>
             </ul>

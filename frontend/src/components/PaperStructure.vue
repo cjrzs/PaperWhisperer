@@ -26,10 +26,10 @@
         
         <div 
           v-show="expandedSections[section.section_id]"
-          class="prose max-w-none"
+          class="max-w-none"
           :class="{ 'ml-4': section.level >= 2, 'ml-8': section.level >= 3 }"
         >
-          <div class="whitespace-pre-wrap text-sm">{{ section.content }}</div>
+          <MarkdownRenderer :content="section.content" class="text-sm" />
         </div>
       </div>
     </div>
@@ -38,6 +38,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import MarkdownRenderer from './MarkdownRenderer.vue'
 
 const props = defineProps({
   sections: {

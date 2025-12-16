@@ -61,20 +61,20 @@
               <div v-if="viewMode === 'bilingual'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="p-4 bg-base-200 rounded-lg">
                   <div class="text-xs opacity-60 mb-1">原文</div>
-                  <div class="text-sm">{{ segment.original }}</div>
+                  <MarkdownRenderer :content="segment.original" class="text-sm" />
                 </div>
                 <div class="p-4 bg-base-200 rounded-lg">
                   <div class="text-xs opacity-60 mb-1">译文</div>
-                  <div class="text-sm">{{ segment.translated }}</div>
+                  <MarkdownRenderer :content="segment.translated" class="text-sm" />
                 </div>
               </div>
 
               <div v-else-if="viewMode === 'translation'" class="p-4 bg-base-200 rounded-lg">
-                <div class="text-sm">{{ segment.translated }}</div>
+                <MarkdownRenderer :content="segment.translated" class="text-sm" />
               </div>
 
               <div v-else class="p-4 bg-base-200 rounded-lg">
-                <div class="text-sm">{{ segment.original }}</div>
+                <MarkdownRenderer :content="segment.original" class="text-sm" />
               </div>
             </div>
           </div>
@@ -92,6 +92,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { usePaperStore } from '../stores/paper'
+import MarkdownRenderer from './MarkdownRenderer.vue'
 
 const props = defineProps({
   paperId: {

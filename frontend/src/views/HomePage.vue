@@ -2,6 +2,14 @@
   <div class="hero min-h-[60vh]">
     <div class="hero-content text-center">
       <div class="max-w-4xl">
+        <div class="flex justify-end mb-4">
+          <button @click="router.push('/history')" class="btn btn-ghost btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            论文历史
+          </button>
+        </div>
         <h1 class="text-5xl font-bold mb-6">欢迎使用 PaperWhisperer</h1>
         <p class="text-lg mb-8 opacity-80">
           上传论文 PDF 或粘贴论文链接，让 AI 帮你深度理解学术论文

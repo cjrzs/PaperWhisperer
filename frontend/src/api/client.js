@@ -23,10 +23,25 @@ client.interceptors.request.use(
 // 响应拦截器
 client.interceptors.response.use(
   response => {
+    console.log('API 响应:', response.data)
     return response.data
   },
   error => {
-    const message = error.response?.data?.detail || error.message || '请求失败'
+    // 处理不同类型的错误信息
+    let message = '请求失败'
+    
+    if (error.response?.data?.detail) {
+      const detail = error.response.data.detail
+      // 如果 detail 是对象，尝试提取有用信息
+      if (typeof detail === 'object') {
+        message = detail.message || detail.error || JSON.stringify(detail)
+      } else {
+        message = detail
+      }
+    } else if (error.message) {
+      message = error.message
+    }
+    
     return Promise.reject(new Error(message))
   }
 )
@@ -54,6 +69,10 @@ const api = {
 
   getPaper(paperId) {
     return client.get(`/paper/${paperId}`)
+  },
+
+  listPapers() {
+    return client.get('/papers/list')
   },
 
   deletePaper(paperId) {

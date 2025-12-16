@@ -26,17 +26,17 @@
             </div>
           </div>
 
-          <div 
-            v-for="(message, index) in messages" 
-            :key="index"
-            class="chat"
-            :class="message.role === 'user' ? 'chat-end' : 'chat-start'"
-          >
-            <div class="chat-bubble" :class="message.role === 'user' ? 'chat-bubble-primary' : ''">
-              <div class="whitespace-pre-wrap">{{ message.content }}</div>
-              
+          <div v-for="(message, index) in messages" :key="index" class="chat"
+            :class="message.role === 'user' ? 'chat-end' : 'chat-start'">
+            <div class="chat-bubble" :class="message.role === 'user' ? 'chat-bubble-primary' : 'chat-bubble-ai'">
+              <!-- 用户消息直接显示文本 -->
+              <div v-if="message.role === 'user'" class="whitespace-pre-wrap">{{ message.content }}</div>
+              <!-- AI 消息使用 Markdown 渲染 -->
+              <MarkdownRenderer v-else :content="message.content" class="chat-markdown" />
+
               <!-- Sources -->
-              <div v-if="message.sources && message.sources.length > 0" class="mt-3 pt-3 border-t border-base-content/20">
+              <div v-if="message.sources && message.sources.length > 0"
+                class="mt-3 pt-3 border-t border-base-content/20">
                 <details class="text-xs opacity-70">
                   <summary class="cursor-pointer">来源 ({{ message.sources.length }})</summary>
                   <div class="mt-2 space-y-1">
@@ -63,19 +63,9 @@
         <!-- Input -->
         <div class="p-4 border-t border-base-300">
           <div class="join w-full">
-            <input 
-              v-model="inputMessage" 
-              type="text" 
-              placeholder="输入你的问题..." 
-              class="input input-bordered join-item flex-1"
-              :disabled="loading"
-              @keypress.enter="sendMessage"
-            />
-            <button 
-              class="btn btn-primary join-item" 
-              @click="sendMessage"
-              :disabled="!inputMessage.trim() || loading"
-            >
+            <input v-model="inputMessage" type="text" placeholder="输入你的问题..."
+              class="input input-bordered join-item flex-1" :disabled="loading" @keypress.enter="sendMessage" />
+            <button class="btn btn-primary join-item" @click="sendMessage" :disabled="!inputMessage.trim() || loading">
               发送
             </button>
           </div>
@@ -88,6 +78,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useChatStore } from '../stores/chat'
+import MarkdownRenderer from './MarkdownRenderer.vue'
 
 const props = defineProps({
   paperId: {
@@ -102,9 +93,10 @@ const loading = ref(false)
 const messagesContainer = ref(null)
 
 const messages = computed(() => {
-  return chatStore.currentSessionId 
-    ? chatStore.getSessionMessages(chatStore.currentSessionId)
-    : []
+  const sessionId = chatStore.currentSessionId
+  const msgs = sessionId ? chatStore.getSessionMessages(sessionId) : []
+  console.log('计算消息列表:', { sessionId, msgs, sessions: chatStore.sessions })
+  return msgs
 })
 
 onMounted(async () => {
@@ -121,16 +113,26 @@ watch(messages, () => {
 
 async function sendMessage() {
   if (!inputMessage.value.trim() || loading.value) return
-  
+
   const message = inputMessage.value
   inputMessage.value = ''
   loading.value = true
-  
+
   try {
+    console.log('发送消息前:', {
+      currentSessionId: chatStore.currentSessionId,
+      sessions: chatStore.sessions
+    })
     await chatStore.sendMessage(props.paperId, message)
+    console.log('发送消息后:', {
+      currentSessionId: chatStore.currentSessionId,
+      sessions: chatStore.sessions
+    })
   } catch (e) {
     console.error('发送消息失败:', e)
-    alert('发送消息失败: ' + e.message)
+    // 确保错误消息是字符串
+    const errorMsg = e?.message || (typeof e === 'string' ? e : '未知错误')
+    alert('发送消息失败: ' + errorMsg)
   } finally {
     loading.value = false
   }
@@ -155,3 +157,37 @@ function scrollToBottom() {
 }
 </script>
 
+<style scoped>
+/* AI 聊天气泡样式 */
+.chat-bubble-ai {
+  @apply bg-base-200;
+}
+
+/* 聊天中的 Markdown 样式调整 */
+.chat-markdown :deep(.markdown-content) {
+  @apply text-sm;
+}
+
+.chat-markdown :deep(.markdown-content p) {
+  @apply my-2;
+}
+
+.chat-markdown :deep(.markdown-content h1),
+.chat-markdown :deep(.markdown-content h2),
+.chat-markdown :deep(.markdown-content h3) {
+  @apply mt-3 mb-2;
+}
+
+.chat-markdown :deep(.markdown-content ul),
+.chat-markdown :deep(.markdown-content ol) {
+  @apply my-2 pl-4;
+}
+
+.chat-markdown :deep(.markdown-content pre) {
+  @apply my-2 p-2 text-xs;
+}
+
+.chat-markdown :deep(.markdown-content code) {
+  @apply text-xs;
+}
+</style>

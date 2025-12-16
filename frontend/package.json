@@ -8,20 +8,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.3.4",
-    "vue-router": "^4.2.4",
-    "pinia": "^2.1.6",
+    "@incremark/core": "^0.0.3",
+    "@incremark/vue": "^0.0.3",
     "axios": "^1.5.0",
-    "marked": "^9.1.0",
+    "daisyui": "^3.9.2",
     "highlight.js": "^11.9.0",
-    "daisyui": "^3.9.2"
+    "marked": "^17.0.1",
+    "pinia": "^2.1.6",
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.3.4",
-    "vite": "^4.4.9",
-    "tailwindcss": "^3.3.3",
     "autoprefixer": "^10.4.15",
-    "postcss": "^8.4.29"
+    "postcss": "^8.4.29",
+    "tailwindcss": "^3.3.3",
+    "vite": "^4.4.9"
   }
 }
-
