@@ -1,13 +1,20 @@
 """
 配置管理模块
 支持从环境变量和 .env 文件加载配置
-所有配置项都从环境变量中读取
+.env 文件优先级高于系统环境变量
 """
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from typing import Optional
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# 在创建 Settings 实例前加载 .env 文件
+# override=True 确保 .env 文件的配置优先于系统环境变量
+_env_file = Path(__file__).parent.parent / ".env"
+if _env_file.exists():
+    load_dotenv(_env_file, override=True)
 
 
 class Settings(BaseSettings):
@@ -217,9 +224,6 @@ class Settings(BaseSettings):
 
 
 # 全局配置实例
-# 所有配置都从环境变量中读取
-# 如果需要使用 .env 文件，请手动使用 python-dotenv 加载：
-#   from dotenv import load_dotenv
-#   load_dotenv()
+# 配置优先级：.env 文件 > 系统环境变量 > 默认值
 settings = Settings()
 

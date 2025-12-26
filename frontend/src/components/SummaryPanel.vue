@@ -104,6 +104,7 @@
 import { ref, onMounted } from 'vue'
 import { usePaperStore } from '../stores/paper'
 import MarkdownRenderer from './MarkdownRenderer.vue'
+import api from '../api/client'
 
 const props = defineProps({
   paperId: {
@@ -141,9 +142,30 @@ async function generateSummary() {
 }
 
 async function pollSummaryStatus(taskId) {
-  // 简化实现：等待一段时间后重新加载
-  setTimeout(async () => {
-    await paperStore.loadSummary(props.paperId)
-  }, 10000)
+  const maxAttempts = 60  // 最多轮询 60 次
+  const interval = 3000   // 每 3 秒轮询一次
+  
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(resolve => setTimeout(resolve, interval))
+    
+    try {
+      const status = await api.getSummaryStatus(taskId)
+      
+      if (status.status === 'completed') {
+        await paperStore.loadSummary(props.paperId)
+        return
+      } else if (status.status === 'failed') {
+        throw new Error(status.error || '摘要生成失败')
+      }
+      // 继续轮询
+    } catch (e) {
+      // 404 表示任务不存在，可能还没开始
+      if (e.message !== '任务不存在') {
+        throw e
+      }
+    }
+  }
+  
+  throw new Error('摘要生成超时')
 }
 </script>

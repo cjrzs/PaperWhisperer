@@ -121,6 +121,20 @@ async def generate_summary(
     }
 
 
+@router.get("/summary/status/{task_id}")
+async def get_summary_status(task_id: str):
+    """获取摘要生成任务状态"""
+    if task_id not in summary_tasks:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    status_info = summary_tasks[task_id]
+    return {
+        "status": status_info["status"].value if hasattr(status_info["status"], 'value') else status_info["status"],
+        "progress": status_info.get("progress", 0),
+        "error": status_info.get("error")
+    }
+
+
 @router.get("/summary/{paper_id}")
 async def get_summary(paper_id: str):
     """

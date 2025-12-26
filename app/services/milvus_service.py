@@ -9,9 +9,11 @@ from pymilvus import (
     CollectionSchema,
     FieldSchema,
     DataType,
-    utility
+    utility,
+    MilvusException
 )
 import json
+import asyncio
 
 from app.config import settings
 from app.utils.logger import log
@@ -20,12 +22,17 @@ from app.utils.logger import log
 class MilvusService:
     """Milvus 向量数据库服务"""
     
+    # 重试配置
+    MAX_RETRIES = 3
+    RETRY_DELAY = 1.0  # 秒
+    
     def __init__(self):
         self.host = settings.milvus_host
         self.port = settings.milvus_port
         self.collection_name = settings.milvus_collection_name
         self.collection: Optional[Collection] = None
         self._connected = False
+        self._collection_loaded = False  # 跟踪 collection 是否已加载到内存
     
     async def connect(self):
         """连接到 Milvus"""
@@ -215,6 +222,20 @@ class MilvusService:
             log.error(f"插入数据失败: {e}")
             raise
     
+    async def _load_collection_with_wait(self):
+        """
+        加载 collection 到内存，并等待时间戳同步
+        避免重复加载，只在首次加载时等待
+        """
+        if self._collection_loaded:
+            return
+        
+        self.collection.load()
+        self._collection_loaded = True
+        # 等待 Milvus 内部时间戳同步，避免 syncTimestamp Failed 错误
+        await asyncio.sleep(0.5)
+        log.info(f"Collection {self.collection_name} 已加载到内存")
+    
     async def search(
         self,
         query_embedding: List[float],
@@ -222,7 +243,7 @@ class MilvusService:
         paper_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
-        向量检索
+        向量检索（带重试机制）
         
         Args:
             query_embedding: 查询向量
@@ -234,8 +255,8 @@ class MilvusService:
         """
         await self._ensure_collection_loaded()
         
-        # 加载 collection 到内存
-        self.collection.load()
+        # 加载 collection 到内存（带等待）
+        await self._load_collection_with_wait()
         
         # 搜索参数
         search_params = {
@@ -246,49 +267,74 @@ class MilvusService:
         # 表达式过滤（如果指定了 paper_id）
         expr = f'paper_id == "{paper_id}"' if paper_id else None
         
-        try:
-            # 执行搜索
-            results = self.collection.search(
-                data=[query_embedding],
-                anns_field="embedding",
-                param=search_params,
-                limit=top_k,
-                expr=expr,
-                output_fields=["chunk_id", "paper_id", "chunk_text", "metadata"]
-            )
-            
-            # 格式化结果
-            formatted_results = []
-            for hit in results[0]:
-                # 兼容不同版本的 pymilvus API
-                try:
-                    # 新版本 API
-                    metadata_str = hit.entity.get("metadata") or "{}"
-                    chunk_id = hit.entity.get("chunk_id")
-                    paper_id = hit.entity.get("paper_id")
-                    chunk_text = hit.entity.get("chunk_text")
-                except TypeError:
-                    # 旧版本 API
-                    metadata_str = hit.get("metadata", "{}")
-                    chunk_id = hit.get("chunk_id")
-                    paper_id = hit.get("paper_id")
-                    chunk_text = hit.get("chunk_text")
+        last_error = None
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                # 执行搜索
+                results = self.collection.search(
+                    data=[query_embedding],
+                    anns_field="embedding",
+                    param=search_params,
+                    limit=top_k,
+                    expr=expr,
+                    output_fields=["chunk_id", "paper_id", "chunk_text", "metadata"]
+                )
                 
-                metadata = json.loads(metadata_str)
-                formatted_results.append({
-                    "chunk_id": chunk_id,
-                    "paper_id": paper_id,
-                    "text": chunk_text,
-                    "score": hit.score,
-                    "metadata": metadata
-                })
-            
-            log.info(f"检索到 {len(formatted_results)} 个相关结果")
-            return formatted_results
-            
-        except Exception as e:
-            log.error(f"向量检索失败: {e}")
-            raise
+                # 格式化结果
+                formatted_results = []
+                for hit in results[0]:
+                    # 兼容不同版本的 pymilvus API
+                    try:
+                        # 新版本 API
+                        metadata_str = hit.entity.get("metadata") or "{}"
+                        chunk_id = hit.entity.get("chunk_id")
+                        result_paper_id = hit.entity.get("paper_id")
+                        chunk_text = hit.entity.get("chunk_text")
+                    except TypeError:
+                        # 旧版本 API
+                        metadata_str = hit.get("metadata", "{}")
+                        chunk_id = hit.get("chunk_id")
+                        result_paper_id = hit.get("paper_id")
+                        chunk_text = hit.get("chunk_text")
+                    
+                    metadata = json.loads(metadata_str)
+                    formatted_results.append({
+                        "chunk_id": chunk_id,
+                        "paper_id": result_paper_id,
+                        "text": chunk_text,
+                        "score": hit.score,
+                        "metadata": metadata
+                    })
+                
+                log.info(f"检索到 {len(formatted_results)} 个相关结果")
+                return formatted_results
+                
+            except MilvusException as e:
+                last_error = e
+                error_msg = str(e).lower()
+                
+                # 检查是否是 syncTimestamp 错误
+                if "synctimestamp" in error_msg or e.code == 65535:
+                    log.warning(
+                        f"Milvus syncTimestamp 错误，重试 {attempt + 1}/{self.MAX_RETRIES}: {e}"
+                    )
+                    # 重置加载状态，下次会重新加载
+                    self._collection_loaded = False
+                    await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
+                    # 重新加载 collection
+                    await self._load_collection_with_wait()
+                else:
+                    # 其他 Milvus 错误，直接抛出
+                    log.error(f"向量检索失败: {e}")
+                    raise
+                    
+            except Exception as e:
+                log.error(f"向量检索失败: {e}")
+                raise
+        
+        # 重试次数用尽
+        log.error(f"向量检索失败，重试 {self.MAX_RETRIES} 次后仍然失败: {last_error}")
+        raise last_error
     
     async def delete_by_paper_id(self, paper_id: str) -> int:
         """
@@ -332,7 +378,7 @@ class MilvusService:
                 return {"error": "Collection 未初始化且不存在"}
         
         try:
-            self.collection.load()
+            await self._load_collection_with_wait()
             num_entities = self.collection.num_entities
             
             return {

@@ -1,26 +1,17 @@
 """
 FastAPI 主应用入口
 """
-from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
-# 尝试加载 .env 文件（如果存在）
-from dotenv import load_dotenv
-env_file = Path(__file__).parent.parent / ".env"
-if env_file.exists():
-    try:
-        load_dotenv(env_file)
-    except (PermissionError, OSError):
-        # .env 文件存在但不可读，忽略并使用环境变量
-        pass
-
+# .env 文件已在 app.config 模块中自动加载
 from app.config import settings
 from app.utils.logger import log
 from app.routers import upload, translate, summary, chat
+from app.services.milvus_service import milvus_service
 
 
 @asynccontextmanager
@@ -35,10 +26,23 @@ async def lifespan(app: FastAPI):
     log.info(f"默认 Embedding 提供商: {settings.default_embedding_provider}")
     log.info("=" * 50)
     
+    # 预连接 Milvus（可选，失败不影响启动）
+    try:
+        await milvus_service.connect()
+        log.info("Milvus 预连接成功")
+    except Exception as e:
+        log.warning(f"Milvus 预连接失败（将在首次使用时重试）: {e}")
+    
     yield
     
     # 关闭时执行
     log.info("PaperWhisperer 正在关闭...")
+    
+    # 断开 Milvus 连接
+    try:
+        await milvus_service.disconnect()
+    except Exception as e:
+        log.warning(f"Milvus 断开连接失败: {e}")
 
 
 # 创建 FastAPI 应用

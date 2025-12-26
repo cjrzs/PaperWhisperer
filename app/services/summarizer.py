@@ -186,17 +186,25 @@ class SummarizerService:
             
             # 尝试解析 JSON 列表
             import json
+            import re
+            
+            # 移除可能的 Markdown 代码块标记
+            cleaned_result = result.strip()
+            # 匹配 ```json ... ``` 或 ``` ... ``` 格式
+            code_block_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', cleaned_result)
+            if code_block_match:
+                cleaned_result = code_block_match.group(1).strip()
+            
             try:
-                key_points = json.loads(result.strip())
+                key_points = json.loads(cleaned_result)
                 if isinstance(key_points, list):
                     return key_points
             except:
                 pass
             
             # 如果不是 JSON，按行分割
-            lines = [line.strip() for line in result.strip().split('\n') if line.strip()]
+            lines = [line.strip() for line in cleaned_result.split('\n') if line.strip()]
             # 移除列表标记（如 "1. ", "- " 等）
-            import re
             key_points = [re.sub(r'^[\d\-\*\+\.]+\s*', '', line) for line in lines]
             return [kp for kp in key_points if kp]
             

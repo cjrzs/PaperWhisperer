@@ -101,6 +101,10 @@ const api = {
     })
   },
 
+  getSummaryStatus(taskId) {
+    return client.get(`/summary/status/${taskId}`)
+  },
+
   getSummary(paperId) {
     return client.get(`/summary/${paperId}`)
   },
