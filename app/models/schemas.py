@@ -134,7 +134,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     """对话请求"""
-    paper_id: str
+    paper_id: Optional[str] = None  # 可选，因为已通过 URL 路径传递
     message: str
     session_id: Optional[str] = None
     provider: Optional[LLMProvider] = None

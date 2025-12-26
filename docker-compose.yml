@@ -99,7 +99,7 @@ services:
       - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-qwen}
       - DEFAULT_EMBEDDING_PROVIDER=${DEFAULT_EMBEDDING_PROVIDER:-qwen}
       - DEBUG=${DEBUG:-False}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_LEVEL=${LOG_LEVEL:-ERROR}
     depends_on:
       milvus:
         condition: service_healthy

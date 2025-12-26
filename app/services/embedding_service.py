@@ -61,13 +61,13 @@ class EmbeddingService:
             raise
     
     @async_retry(max_retries=3, delay=1.0)
-    async def embed_batch(self, texts: List[str], batch_size: int = 100) -> List[List[float]]:
+    async def embed_batch(self, texts: List[str], batch_size: int = 10) -> List[List[float]]:
         """
         批量生成 embedding
         
         Args:
             texts: 文本列表
-            batch_size: 批次大小
+            batch_size: 批次大小（通义千问限制最大为10）
             
         Returns:
             Embedding 向量列表

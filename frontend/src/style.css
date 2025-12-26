@@ -1,40 +1,108 @@
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-family: 'Source Sans 3', system-ui, sans-serif;
+  }
+
   body {
-    @apply bg-base-100 text-base-content;
+    @apply bg-base-100 text-base-content antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Nunito', system-ui, sans-serif;
+    @apply font-bold;
+  }
+
+  /* 平滑的主题切换过渡 */
+  *, *::before, *::after {
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+}
+
+@layer components {
+  /* 现代卡片样式 */
+  .card-modern {
+    @apply bg-base-100 rounded-2xl border border-base-300/50;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  }
+
+  .card-modern:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  }
+
+  /* 玻璃态效果 */
+  .glass-effect {
+    @apply bg-base-100/80 backdrop-blur-lg border border-base-300/30;
+  }
+
+  /* 渐变背景 */
+  .gradient-bg-light {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f0fdf4 100%);
+  }
+
+  .gradient-bg-dark {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  }
+
+  /* 按钮改进 */
+  .btn-modern {
+    @apply font-semibold rounded-xl transition-all duration-200;
+  }
+
+  .btn-modern:hover {
+    @apply transform scale-[1.02];
+  }
+
+  .btn-modern:active {
+    @apply transform scale-[0.98];
   }
 }
 
 /* Markdown 样式 */
 .markdown-body {
-  @apply prose max-w-none;
+  @apply max-w-none;
 }
 
 .markdown-body h1 {
-  @apply text-3xl font-bold mb-4;
+  @apply text-3xl font-bold mb-4 text-base-content;
+  font-family: 'Nunito', system-ui, sans-serif;
 }
 
 .markdown-body h2 {
-  @apply text-2xl font-bold mb-3;
+  @apply text-2xl font-bold mb-3 text-base-content;
+  font-family: 'Nunito', system-ui, sans-serif;
 }
 
 .markdown-body h3 {
-  @apply text-xl font-bold mb-2;
+  @apply text-xl font-bold mb-2 text-base-content;
+  font-family: 'Nunito', system-ui, sans-serif;
 }
 
 .markdown-body p {
-  @apply mb-3;
+  @apply mb-3 leading-relaxed;
 }
 
 .markdown-body code {
-  @apply bg-base-200 px-1 py-0.5 rounded text-sm;
+  @apply bg-base-200 px-1.5 py-0.5 rounded text-sm font-mono text-primary;
 }
 
 .markdown-body pre {
-  @apply bg-base-200 p-4 rounded-lg overflow-x-auto;
+  @apply bg-base-200 p-4 rounded-xl overflow-x-auto border border-base-300/50;
+}
+
+.markdown-body pre code {
+  @apply bg-transparent text-base-content p-0;
+}
+
+.markdown-body blockquote {
+  @apply border-l-4 border-primary/50 pl-4 my-4 italic text-base-content/80 bg-base-200/50 py-2 pr-4 rounded-r-lg;
 }
 
 /* 加载动画 */
@@ -45,7 +113,7 @@
 /* 过渡动画 */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s;
+  transition: opacity 0.3s ease;
 }
 
 .fade-enter-from,
@@ -53,3 +121,41 @@
   opacity: 0;
 }
 
+/* 滑入动画 */
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-up-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-base-200 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-base-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-neutral/50;
+}
+
+/* 选中文本颜色 */
+::selection {
+  @apply bg-primary/20 text-primary;
+}

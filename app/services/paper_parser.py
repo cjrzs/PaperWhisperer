@@ -3,7 +3,7 @@
 从 MinerU 返回的内容中提取论文结构和元数据
 """
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from datetime import datetime
 
 from app.models.schemas import PaperMetadata, PaperSection, PaperStructure
@@ -12,6 +12,25 @@ from app.utils.logger import log
 
 class PaperParser:
     """论文解析器"""
+    
+    @staticmethod
+    def replace_image_paths(markdown_content: str, paper_id: str) -> str:
+        """
+        将 Markdown 中的相对图片路径替换为 API 路径
+        
+        Args:
+            markdown_content: Markdown 内容
+            paper_id: 论文ID
+            
+        Returns:
+            替换后的 Markdown 内容
+        """
+        # 匹配 Markdown 图片语法: ![alt](images/xxx.jpg) 或 ![alt](./images/xxx.jpg)
+        # 替换为: ![alt](/api/images/{paper_id}/images/xxx.jpg)
+        pattern = r'!\[([^\]]*)\]\((?:\./)?images/([^)]+)\)'
+        replacement = rf'![\1](/api/images/{paper_id}/images/\2)'
+        
+        return re.sub(pattern, replacement, markdown_content)
     
     @staticmethod
     def extract_metadata(markdown_content: str) -> Dict[str, Any]:
@@ -143,6 +162,9 @@ class PaperParser:
                 markdown_content = mineru_result
             else:
                 markdown_content = str(mineru_result)
+            
+            # 替换图片路径为 API 路径
+            markdown_content = PaperParser.replace_image_paths(markdown_content, paper_id)
             
             # 提取元数据
             metadata_dict = PaperParser.extract_metadata(markdown_content)

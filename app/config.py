@@ -169,6 +169,9 @@ class Settings(BaseSettings):
         """获取 LLM 配置"""
         provider = provider or self.default_llm_provider
         
+        # 转换为小写以支持大小写不敏感
+        provider = provider.lower()
+        
         if provider == "qwen":
             return {
                 "api_key": self.qwen_api_key,
@@ -193,6 +196,9 @@ class Settings(BaseSettings):
     def get_embedding_config(self, provider: Optional[str] = None):
         """获取 Embedding 配置"""
         provider = provider or self.default_embedding_provider
+        
+        # 转换为小写以支持大小写不敏感
+        provider = provider.lower()
         
         if provider == "qwen":
             return {

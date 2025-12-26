@@ -161,6 +161,9 @@ class LLMFactory:
         """
         provider = provider or settings.default_llm_provider
         
+        # 转换为小写以支持大小写不敏感
+        provider = provider.lower()
+        
         if provider not in cls._providers:
             raise ValueError(f"不支持的 LLM 提供商: {provider}")
         

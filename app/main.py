@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 # 尝试加载 .env 文件（如果存在）
@@ -99,6 +100,10 @@ app.include_router(upload.router, prefix="/api", tags=["上传与解析"])
 app.include_router(translate.router, prefix="/api", tags=["翻译"])
 app.include_router(summary.router, prefix="/api", tags=["摘要"])
 app.include_router(chat.router, prefix="/api", tags=["对话"])
+
+# 挂载静态文件服务，用于提供论文中的图片
+# 图片路径格式: /api/images/{paper_id}/images/xxx.jpg
+app.mount("/api/images", StaticFiles(directory=str(settings.parsed_dir)), name="paper_images")
 
 
 if __name__ == "__main__":

@@ -1,80 +1,99 @@
 <template>
   <div class="summary-panel">
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <!-- Actions -->
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="card-title">论文摘要</h2>
-          <div class="flex gap-2">
-            <button 
-              v-if="!paperStore.hasSummary && !generating"
-              class="btn btn-primary btn-sm"
-              @click="generateSummary"
-            >
-              生成摘要
-            </button>
-            <div v-if="generating" class="flex items-center gap-2">
-              <span class="loading loading-spinner loading-sm"></span>
-              <span class="text-sm">生成中...</span>
-            </div>
+    <div class="card-modern overflow-hidden">
+      <!-- Header -->
+      <div class="px-5 py-4 border-b border-base-300/50 flex justify-between items-center bg-base-100">
+        <h2 class="font-heading font-bold text-lg flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          论文摘要
+        </h2>
+        <div class="flex gap-2">
+          <button 
+            v-if="!paperStore.hasSummary && !generating"
+            class="btn btn-primary btn-sm rounded-xl gap-1"
+            @click="generateSummary"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            生成摘要
+          </button>
+          <div v-if="generating" class="flex items-center gap-2 text-sm text-base-content/60">
+            <span class="loading loading-spinner loading-sm text-primary"></span>
+            生成中...
           </div>
         </div>
+      </div>
 
+      <!-- Content -->
+      <div class="p-5 bg-base-200/30">
         <!-- Summary Content -->
-        <div v-if="paperStore.hasSummary" class="space-y-6">
+        <div v-if="paperStore.hasSummary" class="space-y-4">
           <!-- Overall Summary -->
-          <div class="card bg-base-200">
-            <div class="card-body">
-              <h3 class="card-title text-lg">综合摘要</h3>
-              <MarkdownRenderer :content="paperStore.summary.overall_summary" />
-            </div>
+          <div class="bg-base-100 rounded-xl p-5 border border-base-300/50">
+            <h3 class="font-heading font-semibold text-base mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-primary"></span>
+              综合摘要
+            </h3>
+            <MarkdownRenderer :content="paperStore.summary.overall_summary" class="text-sm text-base-content/80" />
           </div>
 
           <!-- Key Points -->
-          <div v-if="paperStore.summary.key_points && paperStore.summary.key_points.length > 0" class="card bg-base-200">
-            <div class="card-body">
-              <h3 class="card-title text-lg">关键要点</h3>
-              <MarkdownRenderer :content="formatKeyPoints(paperStore.summary.key_points)" />
-            </div>
+          <div v-if="paperStore.summary.key_points && paperStore.summary.key_points.length > 0" class="bg-base-100 rounded-xl p-5 border border-base-300/50">
+            <h3 class="font-heading font-semibold text-base mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-secondary"></span>
+              关键要点
+            </h3>
+            <MarkdownRenderer :content="formatKeyPoints(paperStore.summary.key_points)" class="text-sm text-base-content/80" />
           </div>
 
           <!-- Methodology -->
-          <div v-if="paperStore.summary.methodology" class="card bg-base-200">
-            <div class="card-body">
-              <h3 class="card-title text-lg">研究方法</h3>
-              <MarkdownRenderer :content="paperStore.summary.methodology" />
-            </div>
+          <div v-if="paperStore.summary.methodology" class="bg-base-100 rounded-xl p-5 border border-base-300/50">
+            <h3 class="font-heading font-semibold text-base mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-accent"></span>
+              研究方法
+            </h3>
+            <MarkdownRenderer :content="paperStore.summary.methodology" class="text-sm text-base-content/80" />
           </div>
 
           <!-- Contributions -->
-          <div v-if="paperStore.summary.contributions" class="card bg-base-200">
-            <div class="card-body">
-              <h3 class="card-title text-lg">主要贡献</h3>
-              <MarkdownRenderer :content="paperStore.summary.contributions" />
-            </div>
+          <div v-if="paperStore.summary.contributions" class="bg-base-100 rounded-xl p-5 border border-base-300/50">
+            <h3 class="font-heading font-semibold text-base mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-success"></span>
+              主要贡献
+            </h3>
+            <MarkdownRenderer :content="paperStore.summary.contributions" class="text-sm text-base-content/80" />
           </div>
 
           <!-- Section Summaries -->
-          <div v-if="paperStore.summary.section_summaries && paperStore.summary.section_summaries.length > 0" class="card bg-base-200">
-            <div class="card-body">
-              <h3 class="card-title text-lg">章节摘要</h3>
-              <div class="space-y-4">
-                <div 
-                  v-for="(section, index) in paperStore.summary.section_summaries" 
-                  :key="index"
-                  class="border-l-4 border-primary pl-4"
-                >
-                  <h4 class="font-bold mb-1">{{ section.section_title }}</h4>
-                  <MarkdownRenderer :content="section.summary" class="text-sm" />
-                </div>
+          <div v-if="paperStore.summary.section_summaries && paperStore.summary.section_summaries.length > 0" class="bg-base-100 rounded-xl p-5 border border-base-300/50">
+            <h3 class="font-heading font-semibold text-base mb-4 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-warning"></span>
+              章节摘要
+            </h3>
+            <div class="space-y-4">
+              <div 
+                v-for="(section, index) in paperStore.summary.section_summaries" 
+                :key="index"
+                class="pl-4 border-l-2 border-primary/30"
+              >
+                <h4 class="font-medium text-sm mb-2">{{ section.section_title }}</h4>
+                <MarkdownRenderer :content="section.summary" class="text-sm text-base-content/70" />
               </div>
             </div>
           </div>
         </div>
 
-        <div v-else-if="!generating" class="text-center p-12 opacity-60">
-          <div class="text-6xl mb-4">📋</div>
-          <p>点击"生成摘要"按钮获取论文要点</p>
+        <!-- Empty State -->
+        <div v-else-if="!generating" class="text-center py-16">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <p class="text-base-content/60">点击"生成摘要"按钮获取论文要点</p>
         </div>
       </div>
     </div>
@@ -128,4 +147,3 @@ async function pollSummaryStatus(taskId) {
   }, 10000)
 }
 </script>
-

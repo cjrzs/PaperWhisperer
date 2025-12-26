@@ -7,7 +7,7 @@ from typing import Optional
 
 from app.models.schemas import TranslationRequest, TranslationResult, TaskStatus, LLMProvider
 from app.services.translator import translation_service
-from app.services.paper_parser import paper_parser
+from app.services.paper_parser import PaperParser
 from app.models.schemas import PaperStructure, PaperSection, PaperMetadata
 from app.utils.file_manager import FileManager
 from app.utils.logger import log
@@ -38,13 +38,25 @@ async def translate_paper_background(
             raise ValueError(f"论文不存在: {paper_id}")
         
         # 重建 PaperStructure
+        # 从 full_content 重新解析章节，确保翻译的是原文而非可能被修改的 sections
         metadata = PaperMetadata(**paper_data["metadata"])
-        sections = [PaperSection(**s) for s in paper_data["sections"]]
+        full_content = paper_data["full_content"]
+        sections_data = PaperParser.extract_sections(full_content)
+        sections = [
+            PaperSection(
+                section_id=s["section_id"],
+                title=s["title"],
+                content=s["content"],
+                level=s["level"],
+                order=s["order"]
+            )
+            for s in sections_data
+        ]
         paper = PaperStructure(
             paper_id=paper_id,
             metadata=metadata,
             sections=sections,
-            full_content=paper_data["full_content"]
+            full_content=full_content
         )
         
         # 翻译

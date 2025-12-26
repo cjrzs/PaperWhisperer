@@ -6,6 +6,7 @@ import asyncio
 import httpx
 import zipfile
 import tempfile
+import shutil
 from typing import Optional, Dict, Any
 from pathlib import Path
 
@@ -162,12 +163,13 @@ class MinerUClient:
             log.error(f"查询 MinerU 任务状态异常: {e}")
             raise
     
-    async def wait_for_completion(self, task_id: str) -> Dict[str, Any]:
+    async def wait_for_completion(self, task_id: str, paper_id: Optional[str] = None) -> Dict[str, Any]:
         """
         等待任务完成
         
         Args:
             task_id: 任务ID
+            paper_id: 论文ID，用于保存图片
             
         Returns:
             任务结果
@@ -189,8 +191,8 @@ class MinerUClient:
                 if not result_url:
                     raise Exception("任务完成但未返回结果 URL")
                 
-                # 下载结果
-                result_content = await self._download_result(result_url)
+                # 下载结果，传入 paper_id 以保存图片
+                result_content = await self._download_result(result_url, paper_id=paper_id)
                 return result_content
             
             elif status == "failed":
@@ -201,12 +203,13 @@ class MinerUClient:
             await asyncio.sleep(self.poll_interval)
     
     @async_retry(max_retries=3, delay=2.0)
-    async def _download_result(self, result_url: str) -> Dict[str, Any]:
+    async def _download_result(self, result_url: str, paper_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        下载解析结果（zip文件）并解压提取markdown
+        下载解析结果（zip文件）并解压提取markdown和图片
         
         Args:
             result_url: 结果 URL（zip文件）
+            paper_id: 论文ID，用于保存图片到对应目录
             
         Returns:
             解析结果（Markdown 等）
@@ -250,13 +253,36 @@ class MinerUClient:
                         with open(md_file, 'r', encoding='utf-8') as f:
                             markdown_content = f.read()
                         
+                        # 保存图片文件到持久化目录
+                        images_saved = 0
+                        if paper_id:
+                            # 查找所有图片文件
+                            image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'}
+                            image_files = [
+                                f for f in extracted_files 
+                                if f.is_file() and f.suffix.lower() in image_extensions
+                            ]
+                            
+                            if image_files:
+                                # 创建论文图片目录
+                                paper_images_dir = settings.parsed_dir / paper_id / "images"
+                                paper_images_dir.mkdir(parents=True, exist_ok=True)
+                                
+                                for img_file in image_files:
+                                    dest_path = paper_images_dir / img_file.name
+                                    shutil.copy2(img_file, dest_path)
+                                    images_saved += 1
+                                
+                                log.info(f"已保存 {images_saved} 张图片到: {paper_images_dir}")
+                        
                         # 清理临时 zip 文件
                         Path(tmp_zip_path).unlink()
                         
                         return {
                             "content": markdown_content,
                             "format": "markdown",
-                            "filename": md_file.name
+                            "filename": md_file.name,
+                            "images_saved": images_saved
                         }
                     
         except httpx.HTTPError as e:
@@ -269,24 +295,25 @@ class MinerUClient:
             log.error(f"下载 MinerU 结果异常: {e}")
             raise
     
-    async def parse_pdf(self, url: Optional[str] = None, file_path: Optional[Path] = None) -> Dict[str, Any]:
+    async def parse_pdf(self, url: Optional[str] = None, file_path: Optional[Path] = None, paper_id: Optional[str] = None) -> Dict[str, Any]:
         """
         完整的 PDF 解析流程（提交 -> 等待 -> 获取结果）
         
         Args:
             url: 论文 URL
             file_path: 本地文件路径
+            paper_id: 论文ID，用于保存图片到对应目录
             
         Returns:
             解析结果
         """
-        log.info(f"开始解析 PDF: url={url}, file={file_path}")
+        log.info(f"开始解析 PDF: url={url}, file={file_path}, paper_id={paper_id}")
         
         # 提交任务
         task_id = await self.submit_task(url=url, file_path=file_path)
         
-        # 等待完成
-        result = await self.wait_for_completion(task_id)
+        # 等待完成，传入 paper_id 以保存图片
+        result = await self.wait_for_completion(task_id, paper_id=paper_id)
         
         log.info(f"PDF 解析完成: task_id={task_id}")
         return result

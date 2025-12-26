@@ -63,9 +63,50 @@ class MilvusService:
         
         # 检查 collection 是否已存在
         if utility.has_collection(self.collection_name):
-            log.info(f"Collection {self.collection_name} 已存在")
-            self.collection = Collection(self.collection_name)
-            return
+            # 加载现有 collection 并检查维度
+            existing_collection = Collection(self.collection_name)
+            
+            # 获取现有 collection 的 schema
+            schema = existing_collection.schema
+            embedding_field = None
+            for field in schema.fields:
+                if field.name == "embedding":
+                    embedding_field = field
+                    break
+            
+            if embedding_field:
+                existing_dim = embedding_field.params.get('dim', 0)
+                
+                # 如果维度匹配，直接使用现有 collection
+                if existing_dim == dimension:
+                    log.info(f"Collection {self.collection_name} 已存在，维度匹配: {dimension}")
+                    self.collection = existing_collection
+                    return
+                else:
+                    # 维度不匹配，抛出错误提示用户手动处理
+                    error_msg = (
+                        f"Collection {self.collection_name} 维度不匹配！\n"
+                        f"现有维度: {existing_dim}\n"
+                        f"需要维度: {dimension}\n"
+                        f"请手动删除现有 collection 或更改 embedding 模型配置。\n"
+                        f"删除命令: docker exec -it paperwhisperer-backend python -c "
+                        f"\"from pymilvus import connections, utility; "
+                        f"connections.connect(host='milvus', port=19530); "
+                        f"utility.drop_collection('{self.collection_name}'); "
+                        f"print('Collection deleted')\""
+                    )
+                    log.error(error_msg)
+                    raise ValueError(error_msg)
+            else:
+                # 未找到 embedding 字段，这是异常情况
+                error_msg = (
+                    f"Collection {self.collection_name} 结构异常，未找到 embedding 字段！\n"
+                    f"请手动删除该 collection 后重试。"
+                )
+                log.error(error_msg)
+                raise ValueError(error_msg)
+        
+        log.info(f"开始创建新的 collection: {self.collection_name}, 维度: {dimension}")
         
         # 定义 schema
         fields = [
@@ -102,6 +143,29 @@ class MilvusService:
         
         log.info(f"成功创建 collection: {self.collection_name}, 维度: {dimension}")
     
+    async def _ensure_collection_loaded(self):
+        """
+        确保 collection 已加载
+        如果 collection 未初始化，尝试从 Milvus 加载已存在的 collection
+        """
+        await self.connect()
+        
+        # 如果已经初始化，直接返回
+        if self.collection:
+            return
+        
+        # 检查 collection 是否存在于 Milvus
+        if utility.has_collection(self.collection_name):
+            # 加载现有 collection
+            self.collection = Collection(self.collection_name)
+            log.info(f"已加载现有 collection: {self.collection_name}")
+        else:
+            # Collection 不存在，抛出友好的错误信息
+            raise RuntimeError(
+                f"Collection '{self.collection_name}' 未初始化且不存在。\n"
+                f"请先上传论文以创建 collection，或检查 Milvus 连接配置。"
+            )
+    
     async def insert_chunks(
         self,
         chunk_ids: List[str],
@@ -123,10 +187,7 @@ class MilvusService:
         Returns:
             插入的ID列表
         """
-        await self.connect()
-        
-        if not self.collection:
-            raise RuntimeError("Collection 未初始化")
+        await self._ensure_collection_loaded()
         
         # 将元数据转为 JSON 字符串
         metadata_strs = [json.dumps(m, ensure_ascii=False) for m in metadatas]
@@ -171,10 +232,7 @@ class MilvusService:
         Returns:
             检索结果列表
         """
-        await self.connect()
-        
-        if not self.collection:
-            raise RuntimeError("Collection 未初始化")
+        await self._ensure_collection_loaded()
         
         # 加载 collection 到内存
         self.collection.load()
@@ -202,11 +260,25 @@ class MilvusService:
             # 格式化结果
             formatted_results = []
             for hit in results[0]:
-                metadata = json.loads(hit.entity.get("metadata", "{}"))
+                # 兼容不同版本的 pymilvus API
+                try:
+                    # 新版本 API
+                    metadata_str = hit.entity.get("metadata") or "{}"
+                    chunk_id = hit.entity.get("chunk_id")
+                    paper_id = hit.entity.get("paper_id")
+                    chunk_text = hit.entity.get("chunk_text")
+                except TypeError:
+                    # 旧版本 API
+                    metadata_str = hit.get("metadata", "{}")
+                    chunk_id = hit.get("chunk_id")
+                    paper_id = hit.get("paper_id")
+                    chunk_text = hit.get("chunk_text")
+                
+                metadata = json.loads(metadata_str)
                 formatted_results.append({
-                    "chunk_id": hit.entity.get("chunk_id"),
-                    "paper_id": hit.entity.get("paper_id"),
-                    "text": hit.entity.get("chunk_text"),
+                    "chunk_id": chunk_id,
+                    "paper_id": paper_id,
+                    "text": chunk_text,
                     "score": hit.score,
                     "metadata": metadata
                 })
@@ -228,10 +300,7 @@ class MilvusService:
         Returns:
             删除的数量
         """
-        await self.connect()
-        
-        if not self.collection:
-            raise RuntimeError("Collection 未初始化")
+        await self._ensure_collection_loaded()
         
         try:
             expr = f'paper_id == "{paper_id}"'
@@ -256,7 +325,11 @@ class MilvusService:
         await self.connect()
         
         if not self.collection:
-            return {"error": "Collection 未初始化"}
+            # 尝试加载 collection
+            try:
+                await self._ensure_collection_loaded()
+            except RuntimeError:
+                return {"error": "Collection 未初始化且不存在"}
         
         try:
             self.collection.load()

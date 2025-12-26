@@ -35,9 +35,9 @@ async def process_paper_background(task_id: str, file_id: str, file_path, is_url
         log.info(f"开始解析论文: task_id={task_id}")
         
         if is_url:
-            mineru_result = await mineru_client.parse_pdf(url=file_path)
+            mineru_result = await mineru_client.parse_pdf(url=file_path, paper_id=file_id)
         else:
-            mineru_result = await mineru_client.parse_pdf(file_path=file_path)
+            mineru_result = await mineru_client.parse_pdf(file_path=file_path, paper_id=file_id)
         
         task_status[task_id]["progress"] = 50
         
@@ -205,6 +205,41 @@ async def get_paper(paper_id: str):
         raise HTTPException(status_code=404, detail="论文不存在")
     
     return paper_data
+
+
+@router.get("/papers/list")
+async def list_papers():
+    """
+    获取所有已解析的论文列表
+    """
+    papers = []
+    parsed_dir = settings.parsed_dir
+    
+    # 遍历所有解析后的JSON文件
+    for json_file in parsed_dir.glob("*.json"):
+        try:
+            paper_data = await FileManager.load_parsed_content(json_file.stem)
+            if paper_data and "metadata" in paper_data:
+                metadata = paper_data["metadata"]
+                papers.append({
+                    "paper_id": json_file.stem,
+                    "title": metadata.get("title", "未知标题"),
+                    "authors": metadata.get("authors", []),
+                    "abstract": metadata.get("abstract", ""),
+                    "created_at": json_file.stat().st_ctime,
+                    "modified_at": json_file.stat().st_mtime
+                })
+        except Exception as e:
+            log.error(f"加载论文失败: {json_file}, error={e}")
+            continue
+    
+    # 按修改时间倒序排序
+    papers.sort(key=lambda x: x["modified_at"], reverse=True)
+    
+    return {
+        "total": len(papers),
+        "papers": papers
+    }
 
 
 @router.delete("/paper/{paper_id}")
