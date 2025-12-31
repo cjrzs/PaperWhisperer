@@ -116,7 +116,7 @@ class Settings(BaseSettings):
     
     # Agent Configuration
     agent_max_retrieval_rounds: int = Field(
-        default_factory=lambda: int(os.getenv("AGENT_MAX_RETRIEVAL_ROUNDS", "2")),
+        default_factory=lambda: int(os.getenv("AGENT_MAX_RETRIEVAL_ROUNDS", "5")),
         description="Agent 最大检索轮次"
     )
     agent_intent_temperature: float = Field(
